@@ -1,0 +1,162 @@
+import tkinter as tk
+from tkinter import messagebox
+from collections import deque
+
+class SistemAntrianBank:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Sistem Antrian Bank")
+        self.root.geometry("600x650")
+
+        # Inisialisasi struktur data deque untuk 2 resepsionis 
+        self.antrian1 = deque()
+        self.antrian2 = deque()
+        self.nomor_urut = 1
+
+        self.setup_gui()
+
+    def setup_gui(self):
+        # --- Frame Input ---
+        input_frame = tk.Frame(self.root)
+        input_frame.pack(pady=10, padx=10, fill="x")
+
+        tk.Label(input_frame, text="Nama:", width=15, anchor="w").grid(row=0, column=0, pady=5)
+        self.entry_nama = tk.Entry(input_frame, width=30)
+        self.entry_nama.grid(row=0, column=1, pady=5)
+
+        tk.Label(input_frame, text="Nilai Transaksi (Rp):", width=15, anchor="w").grid(row=1, column=0, pady=5)
+        self.entry_transaksi = tk.Entry(input_frame, width=30)
+        self.entry_transaksi.grid(row=1, column=1, pady=5)
+        self.entry_transaksi.insert(0, "0")
+
+        # --- Frame Layanan ---
+        layanan_frame = tk.LabelFrame(self.root, text="Pilih Jenis Layanan")
+        layanan_frame.pack(pady=10, padx=10, fill="x")
+
+        self.var_layanan = tk.StringVar(value="Penarikan")
+        layanan_opsi = [
+            "Penarikan",
+            "Penyetoran",
+            "Konsultasi",
+            "Transfer Antar Bank / Bayar Tagihan",
+            "Buka Rekening Baru",
+            "Kehilangan Kartu"
+        ]
+
+        for i, opsi in enumerate(layanan_opsi):
+            tk.Radiobutton(layanan_frame, text=opsi, variable=self.var_layanan, value=opsi).grid(row=i, column=0, sticky="w", padx=10)
+
+        tk.Button(self.root, text="Tambah ke Antrian", command=self.tambah_antrian, width=20).pack(pady=5)
+
+        # --- Frame Display Antrian 1 ---
+        tk.Label(self.root, text="Daftar Antrian Resepsionis 1", font=("Arial", 10, "bold")).pack(pady=(10,0))
+        self.listbox_antrian1 = tk.Listbox(self.root, width=80, height=5)
+        self.listbox_antrian1.pack(pady=5)
+        tk.Button(self.root, text="Layani Pelanggan di Resepsionis 1", command=lambda: self.layani_pelanggan(1)).pack()
+
+        # --- Frame Display Antrian 2 ---
+        tk.Label(self.root, text="Daftar Antrian Resepsionis 2", font=("Arial", 10, "bold")).pack(pady=(10,0))
+        self.listbox_antrian2 = tk.Listbox(self.root, width=80, height=5)
+        self.listbox_antrian2.pack(pady=5)
+        tk.Button(self.root, text="Layani Pelanggan di Resepsionis 2", command=lambda: self.layani_pelanggan(2)).pack()
+
+    def hitung_estimasi_waktu(self, jenis_layanan, nilai_transaksi):
+        """Menghitung estimasi waktu berdasarkan aturan layanan"""
+        waktu = 0
+        
+        if jenis_layanan in ["Penarikan", "Penyetoran"]:
+            waktu = 5 # Waktu standar 5 menit 
+            if nilai_transaksi >= 10000000:
+                # Tambahan 5 menit untuk kelipatan 10 juta (dimulai dari 10 juta pertama) [cite: 78, 86]
+                tambahan = (nilai_transaksi // 10000000) * 5
+                waktu += tambahan
+        elif jenis_layanan == "Konsultasi":
+            waktu = 10 # Waktu standar 10 menit [cite: 79]
+        elif jenis_layanan == "Buka Rekening Baru":
+            waktu = 20 # Waktu standar 20 menit [cite: 79]
+        elif jenis_layanan == "Transfer Antar Bank / Bayar Tagihan":
+            waktu = 5 # Waktu standar 5 menit [cite: 80]
+        elif jenis_layanan == "Kehilangan Kartu":
+            waktu = 20 # Waktu standar 20 menit [cite: 81]
+
+        return waktu
+
+    def get_total_waktu_tunggu(self, antrian):
+        """Mendapatkan total waktu tunggu dari sebuah antrian [cite: 101]"""
+        return sum(pelanggan['estimasi_waktu'] for pelanggan in antrian)
+
+    def tambah_antrian(self):
+        nama = self.entry_nama.get().strip()
+        jenis_layanan = self.var_layanan.get()
+        
+        try:
+            nilai_transaksi = int(self.entry_transaksi.get())
+        except ValueError:
+            messagebox.showerror("Error Input", "Nilai transaksi harus berupa angka yang valid.")
+            return
+
+        if not nama:
+            messagebox.showerror("Error Input", "Nama tidak boleh kosong.")
+            return
+
+        # Hitung estimasi waktu untuk pelanggan saat ini [cite: 76]
+        estimasi_waktu = self.hitung_estimasi_waktu(jenis_layanan, nilai_transaksi)
+
+        # Cek antrian mana yang lebih cepat 
+        waktu_antrian1 = self.get_total_waktu_tunggu(self.antrian1)
+        waktu_antrian2 = self.get_total_waktu_tunggu(self.antrian2)
+
+        data_pelanggan = {
+            'id': f"[A{self.nomor_urut:03d}]",
+            'nama': nama,
+            'layanan': jenis_layanan,
+            'transaksi': nilai_transaksi,
+            'estimasi_waktu': estimasi_waktu
+        }
+
+        # Alokasi antrian berdasarkan waktu tunggu tercepat, prioritas ke antrian 1 jika sama 
+        if waktu_antrian2 < waktu_antrian1:
+            self.antrian2.append(data_pelanggan) # Algoritma FIFO: append [cite: 63]
+            pesan = f"{data_pelanggan['id']} {nama} dialihkan ke Antrian 2."
+        else:
+            self.antrian1.append(data_pelanggan) # Algoritma FIFO: append [cite: 63]
+            pesan = f"{data_pelanggan['id']} {nama} masuk ke Antrian 1."
+            
+        self.nomor_urut += 1
+        
+        self.update_display()
+        
+        # Reset input
+        self.entry_nama.delete(0, tk.END)
+        self.entry_transaksi.delete(0, tk.END)
+        self.entry_transaksi.insert(0, "0")
+
+    def layani_pelanggan(self, nomor_resepsionis):
+        antrian = self.antrian1 if nomor_resepsionis == 1 else self.antrian2
+        
+        if len(antrian) == 0: # Pengecekan kondisi antrian kosong [cite: 75]
+            messagebox.showinfo("Info", f"Antrian Resepsionis {nomor_resepsionis} kosong!")
+            return
+            
+        # Menggunakan popleft() untuk mengeluarkan elemen pertama (FIFO) [cite: 63, 73]
+        pelanggan = antrian.popleft()
+        messagebox.showinfo("Layanan Selesai", f"Selesai melayani {pelanggan['nama']} ({pelanggan['id']})")
+        
+        self.update_display()
+
+    def update_display(self):
+        """Memperbarui listbox GUI dengan data terbaru dari deque"""
+        self.listbox_antrian1.delete(0, tk.END)
+        for p in self.antrian1:
+            teks = f"{p['id']} {p['nama']} (Layanan: {p['layanan']}, Nilai Transaksi: {p['transaksi']}, Waktu Tunggu: {p['estimasi_waktu']} menit)"
+            self.listbox_antrian1.insert(tk.END, teks)
+
+        self.listbox_antrian2.delete(0, tk.END)
+        for p in self.antrian2:
+            teks = f"{p['id']} {p['nama']} (Layanan: {p['layanan']}, Nilai Transaksi: {p['transaksi']}, Waktu Tunggu: {p['estimasi_waktu']} menit)"
+            self.listbox_antrian2.insert(tk.END, teks)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SistemAntrianBank(root)
+    root.mainloop()
