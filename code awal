@@ -16,7 +16,6 @@ class SistemAntrianBank:
         self.setup_gui()
 
     def setup_gui(self):
-        # --- Frame Input ---
         input_frame = tk.Frame(self.root)
         input_frame.pack(pady=10, padx=10, fill="x")
 
@@ -29,7 +28,6 @@ class SistemAntrianBank:
         self.entry_transaksi.grid(row=1, column=1, pady=5)
         self.entry_transaksi.insert(0, "0")
 
-        # --- Frame Layanan ---
         layanan_frame = tk.LabelFrame(self.root, text="Pilih Jenis Layanan")
         layanan_frame.pack(pady=10, padx=10, fill="x")
 
@@ -48,13 +46,11 @@ class SistemAntrianBank:
 
         tk.Button(self.root, text="Tambah ke Antrian", command=self.tambah_antrian, width=20).pack(pady=5)
 
-        # --- Frame Display Antrian 1 ---
         tk.Label(self.root, text="Daftar Antrian Resepsionis 1", font=("Arial", 10, "bold")).pack(pady=(10,0))
         self.listbox_antrian1 = tk.Listbox(self.root, width=80, height=5)
         self.listbox_antrian1.pack(pady=5)
         tk.Button(self.root, text="Layani Pelanggan di Resepsionis 1", command=lambda: self.layani_pelanggan(1)).pack()
 
-        # --- Frame Display Antrian 2 ---
         tk.Label(self.root, text="Daftar Antrian Resepsionis 2", font=("Arial", 10, "bold")).pack(pady=(10,0))
         self.listbox_antrian2 = tk.Listbox(self.root, width=80, height=5)
         self.listbox_antrian2.pack(pady=5)
@@ -67,17 +63,16 @@ class SistemAntrianBank:
         if jenis_layanan in ["Penarikan", "Penyetoran"]:
             waktu = 5 # Waktu standar 5 menit 
             if nilai_transaksi >= 10000000:
-                # Tambahan 5 menit untuk kelipatan 10 juta (dimulai dari 10 juta pertama) [cite: 78, 86]
                 tambahan = (nilai_transaksi // 10000000) * 5
                 waktu += tambahan
         elif jenis_layanan == "Konsultasi":
-            waktu = 10 # Waktu standar 10 menit [cite: 79]
+            waktu = 10 
         elif jenis_layanan == "Buka Rekening Baru":
-            waktu = 20 # Waktu standar 20 menit [cite: 79]
+            waktu = 20 ]
         elif jenis_layanan == "Transfer Antar Bank / Bayar Tagihan":
-            waktu = 5 # Waktu standar 5 menit [cite: 80]
+            waktu = 5 
         elif jenis_layanan == "Kehilangan Kartu":
-            waktu = 20 # Waktu standar 20 menit [cite: 81]
+            waktu = 20 
 
         return waktu
 
@@ -114,19 +109,17 @@ class SistemAntrianBank:
             'estimasi_waktu': estimasi_waktu
         }
 
-        # Alokasi antrian berdasarkan waktu tunggu tercepat, prioritas ke antrian 1 jika sama 
         if waktu_antrian2 < waktu_antrian1:
-            self.antrian2.append(data_pelanggan) # Algoritma FIFO: append [cite: 63]
+            self.antrian2.append(data_pelanggan) 
             pesan = f"{data_pelanggan['id']} {nama} dialihkan ke Antrian 2."
         else:
-            self.antrian1.append(data_pelanggan) # Algoritma FIFO: append [cite: 63]
+            self.antrian1.append(data_pelanggan) 
             pesan = f"{data_pelanggan['id']} {nama} masuk ke Antrian 1."
             
         self.nomor_urut += 1
         
         self.update_display()
         
-        # Reset input
         self.entry_nama.delete(0, tk.END)
         self.entry_transaksi.delete(0, tk.END)
         self.entry_transaksi.insert(0, "0")
@@ -138,7 +131,6 @@ class SistemAntrianBank:
             messagebox.showinfo("Info", f"Antrian Resepsionis {nomor_resepsionis} kosong!")
             return
             
-        # Menggunakan popleft() untuk mengeluarkan elemen pertama (FIFO) [cite: 63, 73]
         pelanggan = antrian.popleft()
         messagebox.showinfo("Layanan Selesai", f"Selesai melayani {pelanggan['nama']} ({pelanggan['id']})")
         
