@@ -1,0 +1,175 @@
+import tkinter as tk
+from tkinter import messagebox
+import queue
+from collections import deque
+
+class SistemAntrianBankRevisi:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Sistem Antrian Bank")
+        self.root.geometry("600x700")
+
+        # revisi
+        self.antrian_utama = queue.Queue()
+        self.sedang_dilayani = deque()
+        self.nomor_urut = 1
+
+        self.setup_gui()
+
+    def setup_gui(self):
+        # Frame Input
+        input_frame = tk.Frame(self.root)
+        input_frame.pack(pady=10, padx=10, fill="x")
+
+        tk.Label(input_frame, text="Nama:", width=15, anchor="w").grid(row=0, column=0, pady=5)
+        self.entry_nama = tk.Entry(input_frame, width=30)
+        self.entry_nama.grid(row=0, column=1, pady=5)
+
+        tk.Label(input_frame, text="Nilai Transaksi (Rp):", width=15, anchor="w").grid(row=1, column=0, pady=5)
+        
+        self.var_transaksi = tk.StringVar(value="0")
+        self.var_transaksi.trace_add("write", self.format_ribuan)
+        self.entry_transaksi = tk.Entry(input_frame, width=30, textvariable=self.var_transaksi)
+        self.entry_transaksi.grid(row=1, column=1, pady=5)
+
+        # Frame Layanan
+        layanan_frame = tk.LabelFrame(self.root, text="Pilih Jenis Layanan")
+        layanan_frame.pack(pady=10, padx=10, fill="x")
+
+        self.var_layanan = tk.StringVar(value="Penarikan")
+        layanan_opsi = [
+            "Penarikan",
+            "Penyetoran",
+            "Transfer Antar Bank / Bayar Tagihan",
+            "Konsultasi",
+            "Buka Rekening Baru",
+            "Kehilangan Kartu"
+        ]
+
+        # deteksi perubahan layanan secara real-time
+        for i, opsi in enumerate(layanan_opsi):
+            tk.Radiobutton(
+                layanan_frame, text=opsi, variable=self.var_layanan, 
+                value=opsi, command=self.cek_kebutuhan_transaksi
+            ).grid(row=i, column=0, sticky="w", padx=10)
+
+        tk.Button(self.root, text="Tambah ke Antrian", command=self.tambah_antrian, width=25, bg="#d1e7dd").pack(pady=10)
+
+        # Frame Daftar Antrian (Queue)
+        tk.Label(self.root, text="DAFTAR ANTRIAN UTAMA", font=("Arial", 10, "bold"), fg="blue").pack(pady=(10,0))
+        self.listbox_antrian = tk.Listbox(self.root, width=80, height=7)
+        self.listbox_antrian.pack(pady=5)
+        
+        # tombol untuk memindahkan dari Queue ke Deque
+        tk.Button(self.root, text="Panggil Nasabah ke Meja Layanan ➔", command=self.panggil_ke_layanan, width=30, bg="#fff3cd").pack(pady=5)
+
+        # Frame Daftar Sedang Dilayani (Deque)
+        tk.Label(self.root, text="DAFTAR YANG SEDANG DILAYANI", font=("Arial", 10, "bold"), fg="green").pack(pady=(15,0))
+        self.listbox_dilayani = tk.Listbox(self.root, width=80, height=4, bg="#f8f9fa")
+        self.listbox_dilayani.pack(pady=5)
+        
+        # tombol untuk layanan selesai (popleft dari Deque)
+        tk.Button(self.root, text="✔ Layanan Selesai (Hapus dari Meja)", command=self.selesai_dilayani, width=30, bg="#f8d7da").pack(pady=5)
+
+    def cek_kebutuhan_transaksi(self):
+        layanan = self.var_layanan.get()
+        if layanan in ["Penarikan", "Penyetoran", "Transfer Antar Bank / Bayar Tagihan"]:
+            self.entry_transaksi.config(state="normal")
+            if self.var_transaksi.get() == "—":
+                self.var_transaksi.set("0")
+        else:
+            self.entry_transaksi.config(state="disabled")
+            self.var_transaksi.set("—")
+
+    def format_ribuan(self, *args):
+        nilai_saat_ini = self.var_transaksi.get()
+        if nilai_saat_ini == "—":
+            return
+            
+        nilai_bersih = "".join(filter(str.isdigit, nilai_saat_ini))
+        if not nilai_bersih:
+            self.var_transaksi.set("")
+            return
+            
+        nilai_format = f"{int(nilai_bersih):,}".replace(",", ".")
+        if nilai_saat_ini != nilai_format:
+            self.var_transaksi.set(nilai_format)
+            self.entry_transaksi.icursor(tk.END)
+
+    def tambah_antrian(self):
+        nama = self.entry_nama.get().strip()
+        jenis_layanan = self.var_layanan.get()
+        
+        if not nama:
+            messagebox.showerror("Error Input", "Nama tidak boleh kosong.")
+            return
+
+        # penentuan nilai transaksi
+        if jenis_layanan in ["Penarikan", "Penyetoran", "Transfer Antar Bank / Bayar Tagihan"]:
+            try:
+                nilai_mentah = self.var_transaksi.get().replace(".", "")
+                nilai_transaksi = int(nilai_mentah) if nilai_mentah else 0
+            except ValueError:
+                messagebox.showerror("Error Input", "Nilai transaksi harus berupa angka yang valid.")
+                return
+        else:
+            nilai_transaksi = "—"  # pakai else
+
+        data_pelanggan = {
+            'id': f"[A{self.nomor_urut:03d}]",
+            'nama': nama,
+            'layanan': jenis_layanan,
+            'transaksi': nilai_transaksi
+        }
+
+        # dimasukkan ke Queue utama menggunakan .put()
+        self.antrian_utama.put(data_pelanggan)
+        self.nomor_urut += 1
+        
+        self.update_display()
+        
+        # reset form nama
+        self.entry_nama.delete(0, tk.END)
+
+    def panggil_ke_layanan(self):
+        if self.antrian_utama.empty():
+            messagebox.showwarning("Antrian Kosong", "Tidak ada nasabah di dalam daftar antrian utama!")
+            return
+        
+        # mengeluarkan data dari Queue (.get() otomatis menghapus elemen terdepan)
+        nasabah_terpanggil = self.antrian_utama.get()
+        
+        # memasukkan data ke dalam Deque meja pelayanan (.append())
+        self.sedang_dilayani.append(nasabah_terpanggil)
+        
+        self.update_display()
+
+    def selesai_dilayani(self):
+        if len(self.sedang_dilayani) == 0:
+            messagebox.showwarning("Kosong", "Tidak ada nasabah yang sedang berada di meja pelayanan!")
+            return
+            
+        # pakai popleft() untuk mengeluarkan nasabah paling pertama di meja pelayanan
+        nasabah_selesai = self.sedang_dilayani.popleft()
+        messagebox.showinfo("Sukses", f"Layanan untuk {nasabah_selesai['nama']} ({nasabah_selesai['id']}) telah selesai dikerjakan.")
+        
+        self.update_display()
+
+    def update_display(self):
+        # refresh tampilan Daftar Antrian Utama (Queue)
+        self.listbox_antrian.delete(0, tk.END)
+        for p in list(self.antrian_utama.queue):
+            info_dana = f"Rp {p['transaksi']:,}".replace(",", ".") if p['transaksi'] != "—" else "—"
+            teks = f"{p['id']} - {p['nama']} | Layanan: {p['layanan']} | Nominal: {info_dana}"
+            self.listbox_antrian.insert(tk.END, teks)
+
+        # refresh tampilan Daftar yang Sedang Dilayani (Deque)
+        self.listbox_dilayani.delete(0, tk.END)
+        for p in self.sedang_dilayani:
+            teks = f"⚡ {p['id']} - {p['nama']} sedang dalam pelayanan [{p['layanan']}]"
+            self.listbox_dilayani.insert(tk.END, teks)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SistemAntrianBankRevisi(root)
+    root.mainloop()
