@@ -17,7 +17,6 @@ class SistemAntrianBankRevisi:
         self.setup_gui()
 
     def setup_gui(self):
-        # Frame Input
         input_frame = tk.Frame(self.root)
         input_frame.pack(pady=10, padx=10, fill="x")
 
@@ -32,7 +31,6 @@ class SistemAntrianBankRevisi:
         self.entry_transaksi = tk.Entry(input_frame, width=30, textvariable=self.var_transaksi)
         self.entry_transaksi.grid(row=1, column=1, pady=5)
 
-        # Frame Layanan
         layanan_frame = tk.LabelFrame(self.root, text="Pilih Jenis Layanan")
         layanan_frame.pack(pady=10, padx=10, fill="x")
 
@@ -46,7 +44,6 @@ class SistemAntrianBankRevisi:
             "Kehilangan Kartu"
         ]
 
-        # deteksi perubahan layanan secara real-time
         for i, opsi in enumerate(layanan_opsi):
             tk.Radiobutton(
                 layanan_frame, text=opsi, variable=self.var_layanan, 
@@ -55,15 +52,12 @@ class SistemAntrianBankRevisi:
 
         tk.Button(self.root, text="Tambah ke Antrian", command=self.tambah_antrian, width=25, bg="#d1e7dd").pack(pady=10)
 
-        # Frame Daftar Antrian (Queue)
         tk.Label(self.root, text="DAFTAR ANTRIAN UTAMA", font=("Arial", 10, "bold"), fg="blue").pack(pady=(10,0))
         self.listbox_antrian = tk.Listbox(self.root, width=80, height=7)
         self.listbox_antrian.pack(pady=5)
         
-        # tombol untuk memindahkan dari Queue ke Deque
         tk.Button(self.root, text="Panggil Nasabah ke Meja Layanan ➔", command=self.panggil_ke_layanan, width=30, bg="#fff3cd").pack(pady=5)
 
-        # Frame Daftar Sedang Dilayani (Deque)
         tk.Label(self.root, text="DAFTAR YANG SEDANG DILAYANI", font=("Arial", 10, "bold"), fg="green").pack(pady=(15,0))
         self.listbox_dilayani = tk.Listbox(self.root, width=80, height=4, bg="#f8f9fa")
         self.listbox_dilayani.pack(pady=5)
@@ -104,7 +98,6 @@ class SistemAntrianBankRevisi:
             messagebox.showerror("Error Input", "Nama tidak boleh kosong.")
             return
 
-        # penentuan nilai transaksi
         if jenis_layanan in ["Penarikan", "Penyetoran", "Transfer Antar Bank / Bayar Tagihan"]:
             try:
                 nilai_mentah = self.var_transaksi.get().replace(".", "")
@@ -122,13 +115,11 @@ class SistemAntrianBankRevisi:
             'transaksi': nilai_transaksi
         }
 
-        # dimasukkan ke Queue utama menggunakan .put()
         self.antrian_utama.put(data_pelanggan)
         self.nomor_urut += 1
         
         self.update_display()
         
-        # reset form nama
         self.entry_nama.delete(0, tk.END)
 
     def panggil_ke_layanan(self):
@@ -136,10 +127,8 @@ class SistemAntrianBankRevisi:
             messagebox.showwarning("Antrian Kosong", "Tidak ada nasabah di dalam daftar antrian utama!")
             return
         
-        # mengeluarkan data dari Queue (.get() otomatis menghapus elemen terdepan)
         nasabah_terpanggil = self.antrian_utama.get()
         
-        # memasukkan data ke dalam Deque meja pelayanan (.append())
         self.sedang_dilayani.append(nasabah_terpanggil)
         
         self.update_display()
@@ -149,21 +138,18 @@ class SistemAntrianBankRevisi:
             messagebox.showwarning("Kosong", "Tidak ada nasabah yang sedang berada di meja pelayanan!")
             return
             
-        # pakai popleft() untuk mengeluarkan nasabah paling pertama di meja pelayanan
         nasabah_selesai = self.sedang_dilayani.popleft()
         messagebox.showinfo("Sukses", f"Layanan untuk {nasabah_selesai['nama']} ({nasabah_selesai['id']}) telah selesai dikerjakan.")
         
         self.update_display()
 
     def update_display(self):
-        # refresh tampilan Daftar Antrian Utama (Queue)
         self.listbox_antrian.delete(0, tk.END)
         for p in list(self.antrian_utama.queue):
             info_dana = f"Rp {p['transaksi']:,}".replace(",", ".") if p['transaksi'] != "—" else "—"
             teks = f"{p['id']} - {p['nama']} | Layanan: {p['layanan']} | Nominal: {info_dana}"
             self.listbox_antrian.insert(tk.END, teks)
 
-        # refresh tampilan Daftar yang Sedang Dilayani (Deque)
         self.listbox_dilayani.delete(0, tk.END)
         for p in self.sedang_dilayani:
             teks = f"⚡ {p['id']} - {p['nama']} sedang dalam pelayanan [{p['layanan']}]"
