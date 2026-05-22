@@ -152,7 +152,7 @@ class SistemAntrianBankRevisi:
 
         self.listbox_dilayani.delete(0, tk.END)
         for p in self.sedang_dilayani:
-            teks = f"⚡ {p['id']} - {p['nama']} sedang dalam pelayanan [{p['layanan']}]"
+            teks = f"{p['id']} - {p['nama']} sedang dalam pelayanan [{p['layanan']}]"
             self.listbox_dilayani.insert(tk.END, teks)
 
 if __name__ == "__main__":
